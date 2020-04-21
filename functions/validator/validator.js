@@ -10,6 +10,31 @@ const isEmpty = string => {
   else return false;
 };
 
+const isKenya = number => {
+  const valid = number.substring(0,3) + ''
+  const newValid = number.substring(0,2) + ''
+  if (valid ==="254" || newValid==="07") return true
+    else return false
+
+}
+
+
+const validReg = string => {
+  const plates = string.replace(/ +/g,"").split("")
+  const [one,two,three,four,five,six,seven] = plates
+  const lastThree = parseInt(four + five + six)
+
+  if (plates.length !== 7 || one.toLowerCase() !== "k" || typeof lastThree !== "number") return false
+    else return true
+}
+
+
+const isValidNumber = number => {
+ 
+  if(number.length === 12 || number.length === 10) return true
+    else return false
+}
+
 
 exports.validateSignupData = user => {
   let errors = {};
@@ -51,8 +76,13 @@ exports.validateLoginData = data => {
 exports.validateCustomerData = data => {
   let errors = {};
   if (isEmpty(data.email)) errors.email = "Must not be Empty";
+  else if (!isEmail(data.email)) {
+    errors.email = "Must be a valid email";
+  }
   if (isEmpty(data.name)) errors.name = "Must not be Empty";
   if (isEmpty(data.phone)) errors.phone = "Must not be Empty";
+  else if (!isKenya(data.phone)) errors.phone = "Country not allowed"
+  else if (!isValidNumber(data.phone)) errors.phone = "Not valid"  
   return {
     errors,
     valid: Object.keys(errors).length === 0 ? true : false
@@ -61,8 +91,10 @@ exports.validateCustomerData = data => {
 
 exports.validateRegOfVehicle = data => {
   let errors = {};
-  if (isEmpty(data.model)) errors.name = "Must not be Empty";
+  if (isEmpty(data.model)) errors.model = "Must not be Empty";  
   if (isEmpty(data.registration)) errors.registration = "Must not be Empty";
+  if (isEmpty(data.engine)) errors.engine = "Must not be Empty";
+  if(!validReg(data.registration)) errors.registration = "Must be e.g: 'Kca 123p' "
   return {
     errors,
     valid: Object.keys(errors).length === 0 ? true : false
