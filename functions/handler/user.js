@@ -90,7 +90,7 @@ exports.loginUser = (request, response) => {
         .then(snapuser => {
           snapuser.forEach(ref => {
             // console.log(queryRef)
-            return response.json({ token,role: ref.data().role });
+            return response.json({ token,role: ref.data().role,username: ref.data().username });
           });
         })
         .catch(error => {
@@ -129,48 +129,36 @@ exports.getAllUsers = (request, response) => {
 };
 
 
-exports.getAuthenticatedUser = (request, response) => {
+exports.getAttendantdetails = (request, response) => {
 	let userData = {};
-	db.doc(`/users/${request.user.username}`)
+	db.doc(`/users/${request.params.userName}`)
 		.get()
 		.then((doc) => {
-			if (doc.exists) {
-				userData.credentials = doc.data();
-				return db
-					.collection('likes')
-					.where('username', '==', request.user.username)
-					.get();
-			}
+			if (!doc.exists) {
+        return response.json({error: "User does not exist"})	
+      }
+          userData.credentials = doc.data();
+          return db
+            .collection('customers')
+            .where('attendant', '==', request.params.userName)
+            .orderBy('createdAt', 'desc')
+            .get()
+         
+        .then((data) => {
+            userData.credentials.customers = [];
+            data.forEach(details => {
+              userData.credentials.customers.push(details.data()) 
+            })
+     
+          return response.json(userData);
+        })  
+        .catch((error) => {
+          console.log(error);
+          return response.status(500).json({ error: error.code });
+        })
+      
 		})
-		.then((data) => {
-			userData.customers = [];
-			// console.log(data)
-			data.forEach((doc) => {
-				userData.likes.push(doc.data());
-			});
-
-			return db
-				.collection('customers')
-				.where('attendant', '==', request.user.username)
-				.orderBy('createdAt', 'desc')
-				.limit(10)
-				.get();
-		})
-		.then((data) => {
-			userData.customers = [];
-			data.forEach((doc) => {
-				userData.customers.push({
-					: doc.data().recipient,
-					sender: doc.data().sender,
-					createdAt: doc.data().createdAt,
-					screamId: doc.data().screamId,
-					type: doc.data().type,
-					read: doc.data().read,
-					notificationId: doc.id,
-				});
-			});
-			return response.json(userData);
-		})
+		
 		.catch((error) => {
 			console.log(error);
 			return response.status(500).json({ error: error.code });
