@@ -8,6 +8,7 @@ const functions = require("firebase-functions");
 let cusId;
 exports.customerData = (request, response) => {
   const customerInfo = {
+    createdAt: new Date().toISOString(),
     email: request.body.email,
     name: request.body.name,
     phone: request.body.phone,
@@ -64,6 +65,7 @@ exports.vehicleData = (request, response) => {
     customerId: request.params.customerId,
     model: request.body.model,
     registration: request.body.registration,
+    engine: request.body.engine,
     createdAt: new Date().toISOString(),
   };
 
@@ -116,13 +118,13 @@ exports.vehicleData = (request, response) => {
             return response.json({ error: err.code });
           });
       } else {
-        return response.json({ error: "Already exists" });
+        return response.json({ registration: "Already exists" });
       }
     })
 
     .catch((err) => {
       console.error(err);
-      return response.json({ error: err.code });
+      return response.json({ general: "Something went wrong please try again" });
     });
 };
 
@@ -212,6 +214,25 @@ exports.getVehicle = (request, response) => {
       return response.status(500).json({ error: "Something went wrong" });
     });
 };
+
+exports.getAllCustomers = (request, response) => {
+  db.collection("customers")
+  .orderBy("createdAt", "desc")
+  .get().then((snapshot) => {
+    
+    customers = []
+    snapshot.forEach((doc) => {
+      customers.push(doc.data())
+    })
+    return response.json(customers)
+  })
+  .catch((err) => {
+    console.log(err)
+    return response.status(500).json({ error: "Something went wrong" });
+  })
+}
+
+
 exports.getNotification = (request, response) => {
   let notificationData;
   recpientData = request.params.userId;
