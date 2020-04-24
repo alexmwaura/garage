@@ -101,7 +101,14 @@ exports.validateRegOfVehicle = data => {
   };
 };
 
-
+exports.validateNotificationData = data => {
+  let errors = {}
+  if(isEmpty(data.username)) errors.username = "Must select user"
+  return {
+    errors,
+    valid: Object.keys(errors).length === 0 ? true : false
+  };
+}
 
 
 
