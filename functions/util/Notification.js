@@ -22,7 +22,7 @@ module.exports = (request,response,next) => {
 				.then((data) => {
 					const user = data.docs[0].data()
 					console.log(user)
-					if (user.role !== 'attendant'.trim()){
+					if (user.role !== 'mechanic'.trim()){
 						return response.status(403).json({error: 'Unauthorized'})
 					}
 					else{
