@@ -2,6 +2,7 @@ const { db } = require("../util/admin");
 const {
   validateCustomerData,
   validateRegOfVehicle,
+  validateNotificationData
 } = require("../validator/validator");
 const functions = require("firebase-functions");
 
@@ -100,6 +101,7 @@ exports.vehicleData = (request, response) => {
                     const notificationData = {};
                     notificationData.vehicleId = querySnapshot.docs[0].data().vehicleId;
                     notificationData.sender = doc.data().attendant;
+                    notificationData.createdAt = new Date().toISOString();
                     return db
                       .doc(`notifications/${vehicleInfo.vehicleId}`)
                       .set(notificationData);
@@ -124,7 +126,9 @@ exports.vehicleData = (request, response) => {
 
     .catch((err) => {
       console.error(err);
-      return response.json({ general: "Something went wrong please try again" });
+      return response.json({
+        general: "Something went wrong please try again",
+      });
     });
 };
 
@@ -132,23 +136,21 @@ exports.createNotification = (request, response) => {
   let notification = {
     username: request.body.username,
   };
-
-  db.doc(`users/${request.body.username}`)
+  const { valid, errors } = validateNotificationData(notification);
+  if (!valid) return response.status(400).json(errors);
+  db.doc(`/mechanics/${request.body.username}`)
     .get()
     .then((res) => {
-      if (!res.exists) return response.json({ error: "User not found" });
-
-      if (res.data().role.trim() !== "mechanic")
-        return response.json({ error: "User role not allowed" });
+      if (!res.exists) return response.json({ username: "User not found" });
       db.doc(`notifications/${request.params.vehicleId}`)
         .get()
         .then((doc) => {
           console.log(doc.data());
-          if (!doc.exists) return response.json({ error: "Vehicle not found" });
+          if (!doc.exists) return response.json({ vehicle: "Vehicle not found" });
 
           if (doc.data().recepient)
             return response.json({
-              error: `${doc.data().recepient} has already been notified`,
+              username: `${doc.data().recepient} has already been notified`,
             });
           notificationData = doc.data();
           notificationData.recepient = res.data().username;
@@ -164,7 +166,6 @@ exports.createNotification = (request, response) => {
           return response.json({ error: err.code });
         });
     })
-
     .catch((err) => {
       console.error(err);
       return response.json({ error: err.code });
@@ -201,7 +202,7 @@ exports.getCustomer = (request, response) => {
     });
 };
 
-exports.getVehicle = (request, response) => {
+exports.getAllVehicles = (request, response) => {
   db.collection("vehicles")
     .get()
     .then((snapshot) => {
@@ -215,44 +216,67 @@ exports.getVehicle = (request, response) => {
     });
 };
 
-exports.getAllCustomers = (request, response) => {
-  db.collection("customers")
-  .orderBy("createdAt", "desc")
-  .get().then((snapshot) => {
-    
-    customers = []
-    snapshot.forEach((doc) => {
-      customers.push(doc.data())
-    })
-    return response.json(customers)
-  })
-  .catch((err) => {
-    console.log(err)
-    return response.status(500).json({ error: "Something went wrong" });
-  })
-}
-
-
-exports.getNotification = (request, response) => {
-  let notificationData;
-  recpientData = request.params.userId;
-  db.collection("notifications")
+exports.getVehicle = (request, response) => {
+  db.collection("vehicles")
+    .where("vehicleId", "==", request.params.vehicleId)
     .get()
     .then((snapshot) => {
-      snapshot.forEach((doc) => {
-        recepients = doc.data().recepients;
-        recepients.forEach((rec) => {
-          // console.log(rec.userId)
-          if (recpientData.trim() !== rec.userId.trim()) {
-            return response.json({ error: "No notifications found" });
-          }
-          notificationData = doc.data();
-          delete notificationData.recepients;
-          return response.json(notificationData);
-        });
+      console.log(snapshot);
+      vehicleData = snapshot.docs[0].data();
+      return response.json(vehicleData);
+    })
+    .catch((err) => {
+      console.log(err);
+      return response.status(500).json({ error: "Something went wrong" });
+    });
+};
 
-        return response.json(doc.data());
+exports.getAllCustomers = (request, response) => {
+  db.collection("customers")
+    .orderBy("createdAt", "desc")
+    .get()
+    .then((snapshot) => {
+      customers = [];
+      snapshot.forEach((doc) => {
+        customers.push(doc.data());
       });
+      return response.json(customers);
+    })
+    .catch((err) => {
+      console.log(err);
+      return response.status(500).json({ error: "Something went wrong" });
+    });
+};
+
+exports.getMechanicsData = (request, response) => {
+  db.collection("mechanics")
+    .orderBy("createdAt", "desc")
+    .get()
+    .then((mechanics) => {
+      let mechanicsData = [];
+      mechanics.forEach((mechanic) => {
+        mechanicsData.push(mechanic.data());
+      });
+      return response.json(mechanicsData);
+    })
+    .catch((err) => {
+      console.log(err);
+      return response.status(500).json({ error: "Something went wrong" });
+    });
+};
+
+exports.pendingNotifications = (request, response) => {
+  db.collection("notifications")
+    .where("sender", "==", request.params.username)
+    .orderBy("createdAt", "desc")
+    .get()
+    .then((notifications) => {
+      let notificationData = [];
+      console.log(notifications.docs[0]);
+      notifications.forEach((doc) => {
+        notificationData.push(doc.data());
+      });
+      return response.json(notificationData);
     })
     .catch((err) => {
       console.log(err);
